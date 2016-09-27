@@ -70,7 +70,7 @@ def peopleTime(date):
 				marked = True
 
 		if isContract:
-			contTime[first + " " + last] = marked 
+			contTime[first + " " + last] = marked
 		else:
 			fteTime[first + " " + last] = marked
 	return (fteTime, contTime)
@@ -114,14 +114,16 @@ def closeExcel(wb, filename):
 	wb.save(filename)
 
 
-def outputToExcel(ws, dayOfWeek, fteTime, contTime):
-	dayToCol = dayOfWeek + 1
+# TODO: make it dynamic by adding in formulas
+def dynamicOutputToExcel(ws, dayOfWeek, fteTime, contTime):
+	# 2 for one space and base 1
+	dayToCol = dayOfWeek + 2
 
 	row = namesStart[0]
 	for key in sorted(fteTime.iterkeys()):
 		cell = ws.cell(row=row, column=1)
 		if key == cell.value:
-			ws.cell(row=row, column=dayToCol, value=fteTime[key])
+			ws.cell(row=row, column=dayToCol, value=int(fteTime[key]))
 		else:
 			print "ERROR: invalid person key: " + key + " cell: " + cell.value
 		row += 1
@@ -129,12 +131,36 @@ def outputToExcel(ws, dayOfWeek, fteTime, contTime):
 	# increase row to start of contractors
 	row += 2
 	for key in sorted(contTime.iterkeys()):
-		
+		cell = ws.cell(row=row, column=1)
+		if key == cell.value:
+			ws.cell(row=row, column=dayToCol, value=int(contTime[key]))
+		else:
+			print "ERROR: invalid person key: " + key + " cell: " + cell.value
 		row += 1
-	# proj_tmp = [project["Harvest_Code"], project["Wrike_Name"], project["Progress"]["Completion"], project["Progress"]["Burn"], project["Progress"]["Remain"]]
-	# for col, val in enumerate(proj_tmp):
-	# 	c = ws.cell(row = index, column = col+1)
-	# 	c.value = val
+
+
+def outputToExcel(ws, dayOfWeek, fteTime, contTime):
+	# 2 for one space and base 1
+	dayToCol = dayOfWeek + 2
+
+	row = namesStart[0]
+	for key in sorted(fteTime.iterkeys()):
+		cell = ws.cell(row=row, column=1)
+		if key == cell.value:
+			ws.cell(row=row, column=dayToCol, value=int(fteTime[key]))
+		else:
+			print "ERROR: invalid person key: " + key + " cell: " + cell.value
+		row += 1
+
+	# increase row to start of contractors
+	row += 2
+	for key in sorted(contTime.iterkeys()):
+		cell = ws.cell(row=row, column=1)
+		if key == cell.value:
+			ws.cell(row=row, column=dayToCol, value=int(contTime[key]))
+		else:
+			print "ERROR: invalid person key: " + key + " cell: " + cell.value
+		row += 1
 
 
 if __name__ == '__main__':
