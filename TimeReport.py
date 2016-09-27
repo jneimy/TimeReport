@@ -1,15 +1,16 @@
 from __future__ import division
-from collections import deque
+from collections import OrderedDict
 from openpyxl import Workbook
 from openpyxl import load_workbook
-from datetime import date, timedelta
+from openpyxl.styles import PatternFill, Border, Side, Alignment, Protection, Font
+from datetime import date, timedelta, datetime
 import os
 import sys
 import requests
 import json
 import re
 
-excel_filename = 'rc_pm.xlsx'
+excel_filename = "Timesheet_Report.xlsx"
 
 harvest_headers = {
 	'Content-type': 'application/json',
@@ -19,8 +20,13 @@ harvest_headers = {
 
 hoursForAcceptance = 8
 
-fte = ['Colin', 'Jeff', 'Austin', 'James', 'Anna', 'Torsten', 'Gary', 'Brett', 'Caden', 'Shirley', 'Justin']
-contractors = ['Alfonso', 'Amos', 'Luke', 'Rex', 'Richard']
+fte = ['Colin Goshi', 'Jeff Neimy', 'Austin Haruki', 'James McDowell', 'Anna Fong', 'Torsten Vaivai-Soderberg', 'Gary Murakami', 'Brett Kimura', 'Caden Morikuni', 'Shirley Paoli', 'Justin Khan']
+contractors = ['Alfonso Torres', 'Amos Li', 'Luke Pu', 'Rex Li', 'Richard Yan']
+
+# Excel Style
+namesStart = (4, 1)
+text = Font(name='Calibri',
+					size=12)
 
 def init():
 	# Harvest - Build request & load projects
@@ -30,104 +36,9 @@ def init():
 	return projects_json
 
 
-def openExcel(filename):
-	wb = None
-	ws = None
-
-	# Open or create a new worksheet
-	today = datetime.datetime.now().strftime("%Y.%m.%d")
-	if os.path.exists(filename):
-		wb = load_workbook(filename)
-		if today in wb.get_sheet_names():
-			ws = wb[today]
-	else:
-		wb = Workbook()
-		ws = wb.active
-
-	# Delete current sheet & create new
-	if ws is not None:
-		wb.remove_sheet(ws)
-	ws = wb.create_sheet(0)
-	ws.title = today
-
-	# CM setup sheet headers
-	headers = ["Harvest Code", "Wrike Name", "Completion", "Burn", "Remain"]
-	for col, header in enumerate(headers):
-		c = ws.cell(row = 1, column = col+1)
-		c.value = header
-	return (wb, ws)
-
-
-def closeExcel(wb, filename):
-	wb.save(filename)
-
-
-def outputToExcel(ws, project, index):
-	proj_tmp = [project["Harvest_Code"], project["Wrike_Name"], project["Progress"]["Completion"], project["Progress"]["Burn"], project["Progress"]["Remain"]]
-	for col, val in enumerate(proj_tmp):
-		c = ws.cell(row = index, column = col+1)
-		c.value = val
-
-
-def userTotalTime(userTimeJson, isContract):
-	hours = 0
-	timeByDay = {}
-	for timeEntry in userTimeJson:
-		timeEntry = timeEntry["day_entry"]
-		spentAt = timeEntry["spent_at"]
-
-		isWeekend = False
-		date = datetime.datetime.strptime(spentAt, '%Y-%m-%d')
-		if not isContract:
-			if date.weekday() >= 5:
-				isWeekend = True
-		else:  # Contractors work our Tue-Sat
-			if date.weekday() == 0 or date.weekday() == 6:
-				isWeekend = True
-
-		if spentAt not in timeByDay:
-			timeByDay[spentAt] = {
-				"weekend": isWeekend,
-				"hours": 0
-			}
-		timeByDay[spentAt]["hours"] += timeEntry["hours"]
-		hours = hours + timeEntry["hours"]
-
-	over = 0
-	under = 0
-	for date in timeByDay:
-		weekend = timeByDay[date]["weekend"]
-		dailyHours = timeByDay[date]["hours"]
-		if weekend:
-			over += dailyHours
-		elif dailyHours < 8:
-			under += (8 - dailyHours)
-		elif dailyHours > 8:
-			over += (dailyHours - 8)
-	over -= under
-	if over < 0:
-		over = 0
-	return (hours, over)
-
-
-if __name__ == '__main__':
-	## CI runs this at 8am HNL ##
-	# for each person
-	# check hours logged for previous day
-	# if hours > 8 = good
-	# else = bad
-	# calc daily percentage
-	# if last day of the week
-	#   read week's data
-	#   calc total percentage
-	# output to excel
-	#yesterdayDt = date.today() - timedelta(1)
-	yesterdayDt = date.today() - timedelta(3)
-	yesterday = str(yesterdayDt.strftime('%Y%m%d'))
-	yesterdayFmt = str(yesterdayDt.strftime('%m-%d-%Y'))
-	print yesterday
-
-	peopleTime = {}
+def peopleTime(date):
+	fteTime = {}
+	contTime = {}
 	people = requests.get('https://revacomm.harvestapp.com/people', headers=harvest_headers)
 	people_json = people.json()
 	for person in people_json:
@@ -137,73 +48,119 @@ if __name__ == '__main__':
 		last = pUser['last_name']
 
 		# Skip old employees
-		if first not in fte + contractors:
+		if not pUser['is_active'] or (first + ' ' + last) not in fte + contractors:
 			continue
 
 		# Identify contractors
-		isContract = first in contractors
-
-		# M=0, T=1, W=2, T=3, F=4, S=5, S=6
-		isWeekend = False
-		if not isContract:
-			if yesterdayDt.weekday() >= 5:
-				isWeekend = True
-		else:  # Contractors work our Tue-Sat
-			if yesterdayDt.weekday() == 0 or yesterdayDt.weekday() == 6:
-				isWeekend = True
-		# TODO: how to map contractors days
+		isContract = pUser['is_contractor']
 
 		userTime = requests.get('https://revacomm.harvestapp.com/people/' + uid + '/entries?from=' + yesterday + '&to=' + yesterday, headers=harvest_headers)
 		userTime_json = userTime.json()
-		print first
-		print json.dumps(userTime_json)
+
 		marked = False
-		
+		enteredTime = 0
 		if userTime_json is not None:
-			userTime_json[0]["day_entry"]
-		break
+			for ut in userTime_json:
+				entry = ut.get("day_entry", 0)
+				if entry == 0:
+					continue
+				hours = entry.get("hours", 0)
+				enteredTime += hours
+			if enteredTime >= hoursForAcceptance:
+				marked = True
 
-		peopleTime[uid] = {
-			"first": first,
-			"last": last,
-			"marked": True,
-			"isContract": isContract
-		}
+		if isContract:
+			contTime[first + " " + last] = marked 
+		else:
+			fteTime[first + " " + last] = marked
+	return (fteTime, contTime)
 
 
-	# firstDayOfYear = '20160101'
-	# today = str(datetime.datetime.today().strftime('%Y%m%d'))
+def openExcel(filename, weekSheetName):
+	wb = None
+	ws = None
 
-	# contractOver = 0
-	# coreOver = 0
-	# peopleTime = {}
-	# people = requests.get('https://revacomm.harvestapp.com/people', headers=harvest_headers)
-	# people_json = people.json()
-	# for person in people_json:
-	#	 pUser = person['user']
-	#	 uid = str(pUser['id'])
-	#	 first = pUser['first_name']
-	#	 last = pUser['last_name']
-	#
-	#	 userTime = requests.get('https://revacomm.harvestapp.com/people/' + uid + '/entries?from=' + firstDayOfYear + '&to=' + today, headers=harvest_headers)
-	#	 userTime_json = userTime.json()
-	#	 if not userTime_json:
-	#		 continue
-	#	 isContract = first in contractors
-	#	 hours, over = userTotalTime(userTime_json, isContract)
-	#	 if isContract:
-	#		 contractOver += over
-	#	 else:
-	#		 coreOver += over
-	#	 print first + ": TOT: " + str(hours) + " OVER: " + str(over)
-	#
-	#	 peopleTime[uid] = {
-	#		 "first": first,
-	#		 "last": last,
-	#		 "total_hours": hours,
-	#		 "overtime": over
-	#	 }
-	#
-	# print "Core Over: " + str(coreOver)
-	# print "Contract Over: " + str(contractOver)
-	# print "Total Over: " + str(coreOver + contractOver)
+	# Open or create a new worksheet
+	isCreateWs = False
+	if os.path.exists(filename):
+		wb = load_workbook(filename)
+		if weekSheetName in wb.get_sheet_names():
+			ws = wb[weekSheetName]
+		else:
+			isCreateWs = True
+	else:
+		wb = Workbook()
+		ws = wb.active
+
+		# Delete current sheet & create new
+		if ws is not None:
+			wb.remove_sheet(ws)
+		isCreateWs = True
+
+	if isCreateWs:
+		wsSrc = wb["Template"]
+		ws = wb.copy_worksheet(wsSrc)
+		ws.title = weekSheetName
+		ws.cell(row=1, column=1, value=weekSheetName)
+
+		# Reorder
+		sheetInd = len(wb.get_sheet_names()) - 1
+		wb._sheets = [wb._sheets[sheetInd]] + wb._sheets[0:sheetInd]
+		ws.active = 0
+	return (wb, ws)
+
+
+def closeExcel(wb, filename):
+	wb.save(filename)
+
+
+def outputToExcel(ws, dayOfWeek, fteTime, contTime):
+	dayToCol = dayOfWeek + 1
+
+	row = namesStart[0]
+	for key in sorted(fteTime.iterkeys()):
+		cell = ws.cell(row=row, column=1)
+		if key == cell.value:
+			ws.cell(row=row, column=dayToCol, value=fteTime[key])
+		else:
+			print "ERROR: invalid person key: " + key + " cell: " + cell.value
+		row += 1
+
+	# increase row to start of contractors
+	row += 2
+	for key in sorted(contTime.iterkeys()):
+		
+		row += 1
+	# proj_tmp = [project["Harvest_Code"], project["Wrike_Name"], project["Progress"]["Completion"], project["Progress"]["Burn"], project["Progress"]["Remain"]]
+	# for col, val in enumerate(proj_tmp):
+	# 	c = ws.cell(row = index, column = col+1)
+	# 	c.value = val
+
+
+if __name__ == '__main__':
+	## CI runs this at 8am HNL ##
+	setDt = None
+	if len(sys.argv) >= 2:
+		try:
+			setDt = datetime.strptime(sys.argv[1], "%m.%d.%Y")
+		except:
+			setDt = None
+
+	if setDt:
+		yesterdayDt = setDt
+	else:
+		yesterdayDt = date.today() - timedelta(1)
+	yesterday = str(yesterdayDt.strftime('%Y%m%d'))
+	yesterdayFmt = str(yesterdayDt.strftime('%m.%d.%Y'))
+	print "Time Reporting for: " + yesterdayFmt
+
+	# # M=0, T=1, W=2, T=3, F=4, S=5, S=6
+	dayOfWeek = yesterdayDt.weekday()
+	startOfWeekDt = yesterdayDt - timedelta(dayOfWeek)
+	startOfWeekFmt = str(startOfWeekDt.strftime('%m.%d.%Y'))
+
+	(fteTime, contTime) = peopleTime(yesterday)
+
+	wb, ws = openExcel(excel_filename, startOfWeekFmt)
+	outputToExcel(ws, dayOfWeek, fteTime, contTime)
+	closeExcel(wb, excel_filename)
