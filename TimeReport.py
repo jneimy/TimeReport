@@ -18,13 +18,20 @@ harvest_headers = {
 	'Authorization': 'Basic Y21vcmlrdW5pQHJldmFjb21tLmNvbToqNjAlaEZ4ViVSWHU='
 }
 
-hoursForAcceptance = 8
-
-fte = ['Colin Goshi', 'Jeff Neimy', 'Austin Haruki', 'James McDowell', 'Anna Fong', 'Torsten Vaivai-Soderberg', 'Gary Murakami', 'Brett Kimura', 'Caden Morikuni', 'Shirley Paoli', 'Justin Khan']
-contractors = ['Alfonso Torres', 'Amos Li', 'Luke Pu', 'Rex Li', 'Richard Yan']
+hoursForAcceptance = 5
 
 # Excel Style
 namesStart = (4, 1)
+totCell = (1, 7)
+consultantsFont = Font(name='Calibri',
+							size=12,
+							color='00FFFFFF')
+consultantsFill = PatternFill(start_color='001F4E78',
+								end_color='001F4E78',
+								fill_type='solid')
+totalsFont = Font(name='Calibri',
+					size=12,
+					bold=True)
 text = Font(name='Calibri',
 					size=12)
 
@@ -48,7 +55,7 @@ def peopleTime(date):
 		last = pUser['last_name']
 
 		# Skip old employees
-		if not pUser['is_active'] or (first + ' ' + last) not in fte + contractors:
+		if not pUser['is_active']:
 			continue
 
 		# Identify contractors
@@ -76,7 +83,7 @@ def peopleTime(date):
 	return (fteTime, contTime)
 
 
-def openExcel(filename, weekSheetName):
+def openExcel(filename, weekSheetName, fteTime, contTime):
 	wb = None
 	ws = None
 
@@ -107,36 +114,48 @@ def openExcel(filename, weekSheetName):
 		sheetInd = len(wb.get_sheet_names()) - 1
 		wb._sheets = [wb._sheets[sheetInd]] + wb._sheets[0:sheetInd]
 		ws.active = 0
+
+		# Setup Template
+		row = namesStart[0]
+		for key in sorted(fteTime.iterkeys()):
+			ws.cell(row=row, column=1, value=key)
+			row += 1
+
+		# Consultant Header
+		row += 1
+		cell = ws.cell(row=row, column=1, value="Consultants")
+		cell.fill = consultantsFill
+		cell.font = consultantsFont
+		row += 1
+
+		for key in sorted(contTime.iterkeys()):
+			ws.cell(row=row, column=1, value=key)
+			row += 1
+
+		# Setup Formulas
+		row += 1
+		cell = ws.cell(row=row, column=1, value="Totals")
+		cell.font = totalsFont
+
+		formRowStart = 4
+		formRowEnd = row - 1
+		formColStart = 'B'
+		formColEnd = 'G'
+
+		# Total Formula
+		totArea = formColStart + str(formRowStart) + ':' + formColEnd + str(formRowEnd)
+		ws[formColEnd + '1'] = "=SUM(" + totArea + ")/COUNT(" + totArea + ")"
+
+		# Day Total Formula
+		for ordCol in range(ord(formColStart), ord(formColEnd)+1):
+			dayTotArea = chr(ordCol) + str(formRowStart) + ':' + chr(ordCol) + str(formRowEnd)
+			ws[chr(ordCol) + str(row)] = "=SUM(" + dayTotArea + ")/COUNT(" + dayTotArea + ")"
+			ws[chr(ordCol) + str(row)].number_format = '0%'
 	return (wb, ws)
 
 
 def closeExcel(wb, filename):
 	wb.save(filename)
-
-
-# TODO: make it dynamic by adding in formulas
-def dynamicOutputToExcel(ws, dayOfWeek, fteTime, contTime):
-	# 2 for one space and base 1
-	dayToCol = dayOfWeek + 2
-
-	row = namesStart[0]
-	for key in sorted(fteTime.iterkeys()):
-		cell = ws.cell(row=row, column=1)
-		if key == cell.value:
-			ws.cell(row=row, column=dayToCol, value=int(fteTime[key]))
-		else:
-			print "ERROR: invalid person key: " + key + " cell: " + cell.value
-		row += 1
-
-	# increase row to start of contractors
-	row += 2
-	for key in sorted(contTime.iterkeys()):
-		cell = ws.cell(row=row, column=1)
-		if key == cell.value:
-			ws.cell(row=row, column=dayToCol, value=int(contTime[key]))
-		else:
-			print "ERROR: invalid person key: " + key + " cell: " + cell.value
-		row += 1
 
 
 def outputToExcel(ws, dayOfWeek, fteTime, contTime):
@@ -146,20 +165,24 @@ def outputToExcel(ws, dayOfWeek, fteTime, contTime):
 	row = namesStart[0]
 	for key in sorted(fteTime.iterkeys()):
 		cell = ws.cell(row=row, column=1)
-		if key == cell.value:
-			ws.cell(row=row, column=dayToCol, value=int(fteTime[key]))
-		else:
-			print "ERROR: invalid person key: " + key + " cell: " + cell.value
+		# Skip FTE weekends
+		if dayOfWeek <= 4:
+			if key == cell.value:
+				ws.cell(row=row, column=dayToCol, value=int(fteTime[key]))
+			else:
+				print "ERROR: invalid person key: " + key + " cell: " + cell.value
 		row += 1
 
 	# increase row to start of contractors
 	row += 2
 	for key in sorted(contTime.iterkeys()):
 		cell = ws.cell(row=row, column=1)
-		if key == cell.value:
-			ws.cell(row=row, column=dayToCol, value=int(contTime[key]))
-		else:
-			print "ERROR: invalid person key: " + key + " cell: " + cell.value
+		# Skip contractor weekends Monday & Sunday
+		if dayOfWeek != 0 and dayOfWeek != 6:
+			if key == cell.value:
+				ws.cell(row=row, column=dayToCol, value=int(contTime[key]))
+			else:
+				print "ERROR: invalid person key: " + key + " cell: " + cell.value
 		row += 1
 
 
@@ -187,6 +210,6 @@ if __name__ == '__main__':
 
 	(fteTime, contTime) = peopleTime(yesterday)
 
-	wb, ws = openExcel(excel_filename, startOfWeekFmt)
+	wb, ws = openExcel(excel_filename, startOfWeekFmt, fteTime, contTime)
 	outputToExcel(ws, dayOfWeek, fteTime, contTime)
 	closeExcel(wb, excel_filename)
