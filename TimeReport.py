@@ -20,11 +20,12 @@ harvest_headers = {
 
 hoursForAcceptance = 8
 
-fte = ['Colin Goshi', 'Jeff Neimy', 'Austin Haruki', 'James McDowell', 'Anna Fong', 'Torsten Vaivai-Soderberg', 'Gary Murakami', 'Brett Kimura', 'Caden Morikuni', 'Shirley Paoli', 'Justin Khan']
-contractors = ['Alfonso Torres', 'Amos Li', 'Luke Pu', 'Rex Li', 'Richard Yan']
-
 # Excel Style
 namesStart = (4, 1)
+totCell = (1, 7)
+consultantsFont = Font(name='Calibri',
+							size=12,
+							color='00000000')
 text = Font(name='Calibri',
 					size=12)
 
@@ -48,7 +49,7 @@ def peopleTime(date):
 		last = pUser['last_name']
 
 		# Skip old employees
-		if not pUser['is_active'] or (first + ' ' + last) not in fte + contractors:
+		if not pUser['is_active']:
 			continue
 
 		# Identify contractors
@@ -76,7 +77,7 @@ def peopleTime(date):
 	return (fteTime, contTime)
 
 
-def openExcel(filename, weekSheetName):
+def openExcel(filename, weekSheetName, fteTime, contTime):
 	wb = None
 	ws = None
 
@@ -107,6 +108,22 @@ def openExcel(filename, weekSheetName):
 		sheetInd = len(wb.get_sheet_names()) - 1
 		wb._sheets = [wb._sheets[sheetInd]] + wb._sheets[0:sheetInd]
 		ws.active = 0
+
+		# Setup Template
+		row = namesStart[0]
+		for key in sorted(fteTime.iterkeys()):
+			ws.cell(row=row, column=1, value=key)
+			row += 1
+
+		# Consultant Header
+		row += 1
+		ws.cell(row=row, column=1, value="Consultants")
+		row += 1
+
+		for key in sorted(contTime.iterkeys()):
+			ws.cell(row=row, column=1, value=key)
+
+		# Setup Formulas
 	return (wb, ws)
 
 
@@ -187,6 +204,6 @@ if __name__ == '__main__':
 
 	(fteTime, contTime) = peopleTime(yesterday)
 
-	wb, ws = openExcel(excel_filename, startOfWeekFmt)
-	outputToExcel(ws, dayOfWeek, fteTime, contTime)
+	wb, ws = openExcel(excel_filename, startOfWeekFmt, fteTime, contTime)
+	dynamicOutputToExcel(ws, dayOfWeek, fteTime, contTime)
 	closeExcel(wb, excel_filename)
