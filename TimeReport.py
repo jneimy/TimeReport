@@ -158,12 +158,15 @@ def closeExcel(wb, filename):
 	wb.save(filename)
 
 
-def outputToExcel(ws, dayOfWeek, fteTime, contTime):
+def outputToExcel(ws, dayOfWeek, fteTime, contTime, ignoreList):
 	# 2 for one space and base 1
 	dayToCol = dayOfWeek + 2
 
 	row = namesStart[0]
 	for key in sorted(fteTime.iterkeys()):
+		if key.lower() in ignoreList:
+			row += 1
+			continue
 		cell = ws.cell(row=row, column=1)
 		# Skip FTE weekends
 		if dayOfWeek <= 4:
@@ -171,11 +174,15 @@ def outputToExcel(ws, dayOfWeek, fteTime, contTime):
 				ws.cell(row=row, column=dayToCol, value=int(fteTime[key]))
 			else:
 				print "ERROR: invalid person key: " + key + " cell: " + cell.value
+				continue
 		row += 1
 
 	# increase row to start of contractors
 	row += 2
 	for key in sorted(contTime.iterkeys()):
+		if key.lower() in ignoreList:
+			row += 1
+			continue
 		cell = ws.cell(row=row, column=1)
 		# Skip contractor weekends Monday & Sunday
 		if dayOfWeek != 0 and dayOfWeek != 6:
@@ -183,6 +190,7 @@ def outputToExcel(ws, dayOfWeek, fteTime, contTime):
 				ws.cell(row=row, column=dayToCol, value=int(contTime[key]))
 			else:
 				print "ERROR: invalid person key: " + key + " cell: " + cell.value
+				continue
 		row += 1
 
 
@@ -194,6 +202,15 @@ if __name__ == '__main__':
 			setDt = datetime.strptime(sys.argv[1], "%m.%d.%Y")
 		except:
 			setDt = None
+
+	ignoreList = []
+	if len(sys.argv) >= 3:
+		try:
+			ignoreList = [x.strip().lower() for x in sys.argv[2].split(',')]
+		except:
+			ignoreList = []
+	if ignoreList:
+		print "IGNORE: " + ", ".join(ignoreList).title()
 
 	if setDt:
 		yesterdayDt = setDt
@@ -211,5 +228,5 @@ if __name__ == '__main__':
 	(fteTime, contTime) = peopleTime(yesterday)
 
 	wb, ws = openExcel(excel_filename, startOfWeekFmt, fteTime, contTime)
-	outputToExcel(ws, dayOfWeek, fteTime, contTime)
+	outputToExcel(ws, dayOfWeek, fteTime, contTime, ignoreList)
 	closeExcel(wb, excel_filename)
