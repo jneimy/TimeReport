@@ -9,6 +9,7 @@ import sys
 import requests
 import json
 import re
+import argparse
 
 excel_filename = "Timesheet_Report.xlsx"
 
@@ -196,20 +197,18 @@ def outputToExcel(ws, dayOfWeek, fteTime, contTime, ignoreList):
 
 if __name__ == '__main__':
 	## CI runs this at 8am HNL ##
+	parser = argparse.ArgumentParser(description="Calculate time reports.")
+	parser.add_argument("--date", help="mm.dd.yyyy of date to gather")
+	parser.add_argument("--ignore", help="comma seperated list of people to ignore")
+	args = parser.parse_args()
+
 	setDt = None
-	if len(sys.argv) >= 2:
-		try:
-			setDt = datetime.strptime(sys.argv[1], "%m.%d.%Y")
-		except:
-			setDt = None
+	if args.date:
+		setDt = datetime.strptime(args.date, "%m.%d.%Y")
 
 	ignoreList = []
-	if len(sys.argv) >= 3:
-		try:
-			ignoreList = [x.strip().lower() for x in sys.argv[2].split(',')]
-		except:
-			ignoreList = []
-	if ignoreList:
+	if args.ignore:
+		ignoreList = [x.strip().lower() for x in args.ignore.split(',')]
 		print "IGNORE: " + ", ".join(ignoreList).title()
 
 	if setDt:
