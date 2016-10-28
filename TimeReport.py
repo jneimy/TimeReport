@@ -200,6 +200,7 @@ if __name__ == '__main__':
 	parser = argparse.ArgumentParser(description="Calculate time reports.")
 	parser.add_argument("--date", help="mm.dd.yyyy of date to gather")
 	parser.add_argument("--ignore", help="comma seperated list of people to ignore")
+	parser.add_argument("--interns", help="comma seperated list of people to ignore")
 	args = parser.parse_args()
 
 	setDt = None
