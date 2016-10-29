@@ -76,6 +76,11 @@ def peopleTime(date):
 				enteredTime += hours
 			if enteredTime >= hoursForAcceptance:
 				marked = True
+			# Check if intern argument is called
+				# If called, check whether current person is an intern
+				# If person is an intern, check if they work during dayOfWeek
+				# If they work, check if enteredTime > 0
+				# If 0, marked = True
 
 		if isContract:
 			contTime[first + " " + last] = marked
@@ -200,8 +205,14 @@ if __name__ == '__main__':
 	parser = argparse.ArgumentParser(description="Calculate time reports.")
 	parser.add_argument("--date", help="mm.dd.yyyy of date to gather")
 	parser.add_argument("--ignore", help="comma seperated list of people to ignore")
-	parser.add_argument("--interns", help="comma seperated list of people to ignore")
+	parser.add_argument("--interns", help="Use JSON format as arguments for the intern's schedule. Make sure to escape quotes.")
 	args = parser.parse_args()
+
+	if args.interns:
+		print args.interns
+		data = json.loads(args.interns)
+		print data
+
 
 	setDt = None
 	if args.date:
