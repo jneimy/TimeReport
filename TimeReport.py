@@ -81,7 +81,7 @@ def peopleTime(date):
 				# If person is an intern, check if they work during dayOfWeek
 				# If they work, check if enteredTime > 0
 				# If 0, marked = True
-
+				# test
 		if isContract:
 			contTime[first + " " + last] = marked
 		else:
