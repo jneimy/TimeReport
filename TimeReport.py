@@ -76,12 +76,13 @@ def peopleTime(date):
 				enteredTime += hours
 			if enteredTime >= hoursForAcceptance:
 				marked = True
-			# Check if intern argument is called
-				# If called, check whether current person is an intern
-				# If person is an intern, check if they work during dayOfWeek
-				# If they work, check if enteredTime > 0
-				# If 0, marked = True
-				# test
+			# Custom check for interns
+			if args.interns:
+                                internName = first + " " + last
+                                # Checks whether person is an intern and if they have worked yesterday
+                                if internArgs.get(internName) and dayOfWeek in internArgs.get(internName) and enteredTime > 0:
+                                        marked = True
+
 		if isContract:
 			contTime[first + " " + last] = marked
 		else:
@@ -210,25 +211,7 @@ if __name__ == '__main__':
 
         internArgs = None;
 	if args.interns:
-		internArgs = json.loads(args.interns)
-		for internMember in internArgs:
-                        print internMember # Gets intern name
-                        print internArgs.get(internMember) # Gets the value of the intern (work days)
-                        internWorkDays = internArgs.get(internMember); # Store work day array into internWorkDays
-                        print "I work on %d" % (internWorkDays[0]) # Gets the first day that the intern works
-                        
-                internTest = "Aljon Preza" # Intern to test
-                if internArgs.get(internTest): # Checks whether the intern is part of the dict
-                        print "\n%s is an intern and works in the following hours:" % internTest # Prints intern
-                        print internArgs.get(internTest)
-                        print "Does %s work on Monday (0)?" % internTest
-                        if 0 in internArgs.get(internTest):
-                                print "Yes!"
-                        else:
-                                print "Nope!"
-                        
-                sys.exit(0)
-                
+		internArgs = json.loads(args.interns)                                    
 
 	setDt = None
 	if args.date:
