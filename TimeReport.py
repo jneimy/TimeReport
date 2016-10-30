@@ -205,14 +205,24 @@ if __name__ == '__main__':
 	parser = argparse.ArgumentParser(description="Calculate time reports.")
 	parser.add_argument("--date", help="mm.dd.yyyy of date to gather")
 	parser.add_argument("--ignore", help="comma seperated list of people to ignore")
-	parser.add_argument("--interns", help="Use JSON format as arguments for the intern's schedule. Make sure to escape quotes.")
+	parser.add_argument("--interns", help="Use JSON format as arguments for the intern's schedule. Example: {\"Aljon Preza\": [0,1,2]}")
 	args = parser.parse_args()
 
+        internArgs = None;
 	if args.interns:
-		print args.interns
-		data = json.loads(args.interns)
-		print data
-
+		internArgs = json.loads(args.interns)
+		for internMember in internArgs:
+                        print internMember # Gets intern name
+                        print internArgs.get(internMember) # Gets the value of the intern (work days)
+                        internWorkDays = internArgs.get(internMember); # Store work day array into internWorkDays
+                        print "I work on %d" % (internWorkDays[0]) # Gets the first day that the intern works
+                        
+                internTest = "Aljon Preza" # Intern to test
+                if internArgs.get(internTest): # Checks whether the intern is part of the dict
+                        print "\n%s is an intern and works in the following hours:" % internTest # Prints intern
+                        print internArgs.get(internTest)
+                sys.exit(0)
+                
 
 	setDt = None
 	if args.date:
