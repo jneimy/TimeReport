@@ -221,6 +221,12 @@ if __name__ == '__main__':
                 if internArgs.get(internTest): # Checks whether the intern is part of the dict
                         print "\n%s is an intern and works in the following hours:" % internTest # Prints intern
                         print internArgs.get(internTest)
+                        print "Does %s work on Monday (0)?" % internTest
+                        if 0 in internArgs.get(internTest):
+                                print "Yes!"
+                        else:
+                                print "Nope!"
+                        
                 sys.exit(0)
                 
 
