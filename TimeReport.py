@@ -4,6 +4,7 @@ from openpyxl import Workbook
 from openpyxl import load_workbook
 from openpyxl.styles import PatternFill, Border, Side, Alignment, Protection, Font
 from datetime import date, timedelta, datetime
+from enum import Enum
 import os
 import sys
 import requests
@@ -35,6 +36,9 @@ totalsFont = Font(name='Calibri',
 					bold=True)
 text = Font(name='Calibri',
 					size=12)
+
+# Days of Week enum
+DaysOfWeek = Enum("DaysOfWeek", "M T W TH F SAT SUN")
 
 def init():
 	# Harvest - Build request & load projects
@@ -74,14 +78,19 @@ def peopleTime(date):
 					continue
 				hours = entry.get("hours", 0)
 				enteredTime += hours
-			if enteredTime >= hoursForAcceptance:
-				marked = True
 			# Custom check for interns
 			if args.interns:
-                                internName = first + " " + last
-                                # Checks whether person is an intern and if they have worked yesterday
-                                if internArgs.get(internName) and dayOfWeek in internArgs.get(internName) and enteredTime > 0:
-                                        marked = True
+				internName = first + " " + last
+				getIntern = internArgs.get(internName)
+				# Gets yesterday's date and converts to Work Day Enum name
+				workDay = yesterdayDt.weekday()
+				workDayIndex = workDay + 1
+				workDayName = DaysOfWeek(workDayIndex).name
+				# Checks whether person is an intern and if they have worked yesterday
+				if getIntern and workDayName in getIntern and enteredTime > 0:
+					marked = True
+			if enteredTime >= hoursForAcceptance:
+				marked = True
 
 		if isContract:
 			contTime[first + " " + last] = marked
@@ -211,7 +220,7 @@ if __name__ == '__main__':
 
         internArgs = None;
 	if args.interns:
-		internArgs = json.loads(args.interns)                                    
+		internArgs = json.loads(args.interns)
 
 	setDt = None
 	if args.date:
