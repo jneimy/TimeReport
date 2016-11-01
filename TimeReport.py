@@ -80,7 +80,7 @@ def peopleTime(date):
 				enteredTime += hours
 			# Custom check for interns
 			if args.interns:
-				internName = first + " " + last
+				internName = (first + " " + last).lower()
 				getIntern = internArgs.get(internName)
 				# Gets yesterday's date and converts to Work Day Enum name
 				workDay = yesterdayDt.weekday()
@@ -221,6 +221,8 @@ if __name__ == '__main__':
         internArgs = None;
 	if args.interns:
 		internArgs = json.loads(args.interns)
+		# Converts all keys (names) as lower case and all values (days) as upper case.
+		internArgs = {k.lower(): [item.upper() for item in v] for k, v in internArgs.iteritems()}
 
 	setDt = None
 	if args.date:
