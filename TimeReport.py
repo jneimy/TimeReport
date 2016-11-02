@@ -4,6 +4,7 @@ from openpyxl import Workbook
 from openpyxl import load_workbook
 from openpyxl.styles import PatternFill, Border, Side, Alignment, Protection, Font
 from datetime import date, timedelta, datetime
+from enum import Enum
 import os
 import sys
 import requests
@@ -35,6 +36,9 @@ totalsFont = Font(name='Calibri',
 					bold=True)
 text = Font(name='Calibri',
 					size=12)
+
+# Days of Week enum
+DaysOfWeek = Enum("DaysOfWeek", "M T W TH F SAT SUN")
 
 def init():
 	# Harvest - Build request & load projects
@@ -74,6 +78,17 @@ def peopleTime(date):
 					continue
 				hours = entry.get("hours", 0)
 				enteredTime += hours
+			# Custom check for interns
+			if args.interns:
+				internName = (first + " " + last).lower()
+				getIntern = internArgs.get(internName)
+				# Gets yesterday's date and converts to Work Day Enum name
+				workDay = yesterdayDt.weekday()
+				workDayIndex = workDay + 1
+				workDayName = DaysOfWeek(workDayIndex).name
+				# Checks whether person is an intern and if they have worked yesterday
+				if getIntern and workDayName.lower() in getIntern and enteredTime > 0:
+					marked = True
 			if enteredTime >= hoursForAcceptance:
 				marked = True
 
@@ -200,7 +215,12 @@ if __name__ == '__main__':
 	parser = argparse.ArgumentParser(description="Calculate time reports.")
 	parser.add_argument("--date", help="mm.dd.yyyy of date to gather")
 	parser.add_argument("--ignore", help="comma seperated list of people to ignore")
+	parser.add_argument("--interns", help="Use JSON format as arguments for the intern's schedule. Example: {\"Aljon Preza\": [\"M\",\"T\"]}")
 	args = parser.parse_args()
+
+        internArgs = None;
+	if args.interns:
+		internArgs = json.loads(args.interns.lower())
 
 	setDt = None
 	if args.date:
