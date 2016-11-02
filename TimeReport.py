@@ -87,7 +87,7 @@ def peopleTime(date):
 				workDayIndex = workDay + 1
 				workDayName = DaysOfWeek(workDayIndex).name
 				# Checks whether person is an intern and if they have worked yesterday
-				if getIntern and workDayName in getIntern and enteredTime > 0:
+				if getIntern and workDayName.lower() in getIntern and enteredTime > 0:
 					marked = True
 			if enteredTime >= hoursForAcceptance:
 				marked = True
@@ -220,9 +220,7 @@ if __name__ == '__main__':
 
         internArgs = None;
 	if args.interns:
-		internArgs = json.loads(args.interns)
-		# Converts all keys (names) as lower case and all values (days) as upper case.
-		internArgs = {k.lower(): [item.upper() for item in v] for k, v in internArgs.iteritems()}
+		internArgs = json.loads(args.interns.lower())
 
 	setDt = None
 	if args.date:
